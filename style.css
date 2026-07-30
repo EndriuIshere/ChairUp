@@ -17,10 +17,6 @@
     box-sizing: border-box;
 }
 
-.hidden{
-    display: none !important;
-}
-
 body{
     margin: 0;
     padding: 16px;
@@ -195,6 +191,12 @@ body{
     justify-content: center;
     font-weight: bold;
     letter-spacing: 3px;
+}
+
+#palco.editing{
+    outline: 2px dashed var(--info);
+    outline-offset: 4px;
+    cursor: default;
 }
 
 /* ---------- SEZIONI DI SEDIE ---------- */
@@ -380,6 +382,11 @@ body{
     padding: 6px 12px;
     font-weight: bold;
     cursor: pointer;
+}
+
+#add-section-btn{
+    background-color: var(--info);
+    color: white;
 }
 
 #save-layout-btn{

@@ -32,6 +32,10 @@ let pendingFreeSeat = null;
 let viewport = { x: 0, y: 0, scale: 1 };
 let currentDrag = null;          // {type, ...}
 
+let stage = { width: 700, height: 400 }; // dimensioni del PALCO, ridimensionabile in Editing Mode
+const STAGE_MIN = 100;
+const STAGE_MAX = 2000;
+
 let currentUser = null;          // sessione Supabase Auth (null = anonimo, sola lettura)
 
 /* ---------- UTILITY ---------- */
@@ -73,23 +77,51 @@ function buildDefaultLayout(){
     });
 }
 
+// Calcola il prossimo numero progressivo libero, guardando tutti i codici
+// numerici già usati in tutte le sezioni. Serve per numerare automaticamente
+// i nuovi posti creati (ingrandendo una sezione o creandone una nuova).
+function nextSeatNumber(){
+    let max = 0;
+    layout.forEach(sec => {
+        sec.seats.forEach(row => row.forEach(code => {
+            if(code !== null && code !== undefined && code !== ""){
+                const n = parseInt(code, 10);
+                if(!isNaN(n) && n > max) max = n;
+            }
+        }));
+    });
+    return max + 1;
+}
+
 /* ---------- CARICAMENTO DATI DA SUPABASE ---------- */
 
 async function loadLayout(){
     try{
         const { data, error } = await supabaseClient.from("layout_sections").select("*");
         if(!error && data && data.length > 0){
-            layout = data.map(row => ({
-                id: row.id,
-                label: row.label,
-                rows: row.rows,
-                cols: row.cols,
-                x: Number(row.pos_x),
-                y: Number(row.pos_y),
-                rotation: Number(row.rotation),
-                seats: row.seats,
-                cache: {}
-            }));
+            const stageRow = data.find(row => row.id === "palco");
+            if(stageRow){
+                stage = {
+                    width: Number(stageRow.cols) || 700,
+                    height: Number(stageRow.rows) || 400
+                };
+            }
+
+            layout = data
+                .filter(row => row.id !== "palco")
+                .map(row => ({
+                    id: row.id,
+                    label: row.label,
+                    rows: row.rows,
+                    cols: row.cols,
+                    x: Number(row.pos_x),
+                    y: Number(row.pos_y),
+                    rotation: Number(row.rotation),
+                    seats: row.seats,
+                    cache: {}
+                }));
+
+            if(layout.length === 0) layout = buildDefaultLayout();
         } else {
             layout = buildDefaultLayout();
         }
@@ -127,6 +159,30 @@ function renderMap(){
     const world = document.getElementById("map-world");
     world.querySelectorAll(".section-box").forEach(el => el.remove());
     layout.forEach(section => world.appendChild(buildSectionEl(section)));
+    renderPalco();
+}
+
+function renderPalco(){
+    const palco = document.getElementById("palco");
+    palco.style.width = stage.width + "px";
+    palco.style.height = stage.height + "px";
+    palco.classList.toggle("editing", editMode);
+
+    let handle = palco.querySelector(".resize-handle");
+    if(editMode){
+        if(!handle){
+            handle = document.createElement("div");
+            handle.className = "resize-handle";
+            handle.title = "Trascina per ridimensionare il palco";
+            handle.addEventListener("pointerdown", (e) => {
+                e.stopPropagation();
+                startStageResize(e);
+            });
+            palco.appendChild(handle);
+        }
+    } else if(handle){
+        handle.remove();
+    }
 }
 
 function buildSectionEl(section){
@@ -301,6 +357,19 @@ function onPointerMove(e){
         return;
     }
 
+    if(currentDrag.type === "resize-stage"){
+        const dxScreen = (e.clientX - currentDrag.startClientX) / viewport.scale;
+        const dyScreen = (e.clientY - currentDrag.startClientY) / viewport.scale;
+
+        stage.width = clamp(Math.round(currentDrag.startWidth + dxScreen), STAGE_MIN, STAGE_MAX);
+        stage.height = clamp(Math.round(currentDrag.startHeight + dyScreen), STAGE_MIN, STAGE_MAX);
+
+        const palco = document.getElementById("palco");
+        palco.style.width = stage.width + "px";
+        palco.style.height = stage.height + "px";
+        return;
+    }
+
     const sec = getSection(currentDrag.sectionId);
     if(!sec) return;
 
@@ -369,6 +438,14 @@ function startSectionRotate(e, sectionId){
     currentDrag = { type: "rotate-section", sectionId };
 }
 
+function startStageResize(e){
+    currentDrag = {
+        type: "resize-stage",
+        startClientX: e.clientX, startClientY: e.clientY,
+        startWidth: stage.width, startHeight: stage.height
+    };
+}
+
 function cacheKey(r, c){
     return r + "_" + c;
 }
@@ -389,18 +466,73 @@ function syncCacheFromSeats(sec){
 function resizeSectionSeats(sec, newRows, newCols){
     syncCacheFromSeats(sec);
 
+    let nextNum = nextSeatNumber();
+
     const newSeats = [];
     for(let r = 0; r < newRows; r++){
         const row = [];
         for(let c = 0; c < newCols; c++){
             const key = cacheKey(r, c);
-            row.push(Object.prototype.hasOwnProperty.call(sec.cache, key) ? sec.cache[key] : null);
+            if(Object.prototype.hasOwnProperty.call(sec.cache, key)){
+                row.push(sec.cache[key]);
+            } else {
+                // cella nuova: le assegniamo subito un numero di posto
+                // progressivo, così la sedia compare davvero (invece di
+                // restare una cella vuota da rinumerare a mano)
+                const code = String(nextNum++);
+                row.push(code);
+                sec.cache[key] = code;
+            }
         }
         newSeats.push(row);
     }
     sec.rows = newRows;
     sec.cols = newCols;
     sec.seats = newSeats;
+}
+
+/* ---------- EDITING MODE: AGGIUNTA NUOVA AREA ---------- */
+
+function addSection(){
+    if(!requireAuth()) return;
+
+    const rows = 4, cols = 4; // area quadrata di default
+    const w = cols * (CELL + GAP) + GAP;
+    const h = rows * (CELL + GAP) + GAP;
+
+    // la posizioniamo al centro di ciò che si vede ora nel viewport
+    const viewportEl = document.getElementById("map-viewport");
+    const rect = viewportEl.getBoundingClientRect();
+    const worldCenterX = (rect.width / 2 - viewport.x) / viewport.scale;
+    const worldCenterY = (rect.height / 2 - viewport.y) / viewport.scale;
+
+    let nextNum = nextSeatNumber();
+    const seats = [];
+    const cache = {};
+    for(let r = 0; r < rows; r++){
+        const row = [];
+        for(let c = 0; c < cols; c++){
+            const code = String(nextNum++);
+            row.push(code);
+            cache[cacheKey(r, c)] = code;
+        }
+        seats.push(row);
+    }
+
+    const newSection = {
+        id: "section-" + Date.now(),
+        label: "Nuova sezione",
+        rows, cols,
+        x: Math.round(worldCenterX - w / 2),
+        y: Math.round(worldCenterY - h / 2),
+        rotation: 0,
+        seats,
+        cache
+    };
+
+    layout.push(newSection);
+    renderMap();
+    renderInfoPanel();
 }
 
 /* ---------- EDITING MODE: RINUMERAZIONE POSTO ---------- */
@@ -447,6 +579,20 @@ async function saveLayout(){
         seats: sec.seats,
         updated_at: new Date().toISOString()
     }));
+
+    // Riga speciale che memorizza solo le dimensioni del palco (non è una
+    // sezione di sedie: "rows"/"cols" qui rappresentano altezza/larghezza in px)
+    rows.push({
+        id: "palco",
+        label: "PALCO",
+        rows: stage.height,
+        cols: stage.width,
+        pos_x: 0,
+        pos_y: 0,
+        rotation: 0,
+        seats: [],
+        updated_at: new Date().toISOString()
+    });
 
     const { error } = await supabaseClient.from("layout_sections").upsert(rows, { onConflict: "id" });
     status.textContent = error ? ("Errore nel salvataggio: " + error.message) : "Mappa salvata su Supabase.";
@@ -664,6 +810,7 @@ async function init(){
     document.getElementById("edit-toggle-btn").addEventListener("click", toggleEditMode);
     document.getElementById("save-layout-btn").addEventListener("click", saveLayout);
     document.getElementById("exit-edit-btn").addEventListener("click", exitEditMode);
+    document.getElementById("add-section-btn").addEventListener("click", addSection);
 
     document.getElementById("confirm-paid-btn").addEventListener("click", () => confirmSelection("paid"));
     document.getElementById("confirm-free-btn").addEventListener("click", () => confirmSelection("free"));
