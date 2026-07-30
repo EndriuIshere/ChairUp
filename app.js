@@ -29,6 +29,12 @@ let editMode = false;
 let renameTarget = null;         // {sectionId, r, c}
 let pendingFreeSeat = null;
 
+// Sezioni eliminate in Editing Mode ma non ancora salvate su Supabase:
+// vanno rimosse dal DB al prossimo saveLayout(), insieme ai codici posto
+// che contenevano (per ripulire anche le prenotazioni collegate).
+let pendingDeletedSectionIds = new Set();
+let pendingDeletedSeatCodes = new Set();
+
 let viewport = { x: 0, y: 0, scale: 1 };
 let currentDrag = null;          // {type, ...}
 
@@ -556,6 +562,23 @@ function deleteSection(sectionId){
     const ok = confirm(`Eliminare la sezione "${sec.label || sec.id}"? Ricordati di premere Salva per rendere definitiva la modifica.`);
     if(!ok) return;
 
+    // Raccogliamo tutti i codici posto della sezione: servono per ripulire
+    // anche le prenotazioni collegate (in locale subito, su Supabase al salvataggio).
+    const codes = [];
+    sec.seats.forEach(row => row.forEach(code => {
+        if(code !== null && code !== undefined && code !== "") codes.push(code);
+    }));
+
+    pendingDeletedSectionIds.add(sectionId);
+    codes.forEach(code => pendingDeletedSeatCodes.add(code));
+
+    // Rimuoviamo subito le eventuali prenotazioni/selezioni di questi posti
+    // per il giorno corrente, così il totale si aggiorna immediatamente.
+    codes.forEach(code => {
+        bookings.delete(code);
+        selected.delete(code);
+    });
+
     layout = layout.filter(s => s.id !== sectionId);
     renderMap();
     renderInfoPanel();
@@ -594,6 +617,36 @@ async function saveLayout(){
     const status = document.getElementById("save-status");
     status.textContent = "Salvataggio mappa in corso...";
 
+    // Prima ripuliamo il DB da ciò che è stato eliminato in questa sessione
+    // di editing: le sezioni rimosse e le prenotazioni dei posti che contenevano.
+    // Senza questo passaggio l'upsert sotto non cancella nulla, e al refresh
+    // la sezione "eliminata" ricompariva perché restava ancora nel DB.
+    if(pendingDeletedSeatCodes.size > 0){
+        const codesToDelete = Array.from(pendingDeletedSeatCodes);
+        const { error: delSeatsError } = await supabaseClient
+            .from("seats_bookings")
+            .delete()
+            .in("seat_code", codesToDelete);
+
+        if(delSeatsError){
+            status.textContent = "Errore nell'eliminazione delle prenotazioni: " + delSeatsError.message;
+            return;
+        }
+    }
+
+    if(pendingDeletedSectionIds.size > 0){
+        const idsToDelete = Array.from(pendingDeletedSectionIds);
+        const { error: delSectionsError } = await supabaseClient
+            .from("layout_sections")
+            .delete()
+            .in("id", idsToDelete);
+
+        if(delSectionsError){
+            status.textContent = "Errore nell'eliminazione delle sezioni: " + delSectionsError.message;
+            return;
+        }
+    }
+
     const rows = layout.map(sec => ({
         id: sec.id,
         label: sec.label,
@@ -621,7 +674,16 @@ async function saveLayout(){
     });
 
     const { error } = await supabaseClient.from("layout_sections").upsert(rows, { onConflict: "id" });
-    status.textContent = error ? ("Errore nel salvataggio: " + error.message) : "Mappa salvata su Supabase.";
+    if(error){
+        status.textContent = "Errore nel salvataggio: " + error.message;
+        return;
+    }
+
+    pendingDeletedSectionIds.clear();
+    pendingDeletedSeatCodes.clear();
+
+    status.textContent = "Mappa salvata su Supabase.";
+    renderInfoPanel();
 }
 
 function toggleEditMode(){
