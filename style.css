@@ -1,0 +1,628 @@
+:root{
+    --bg: #14161a;
+    --panel-bg: #1f232b;
+    --panel-bg-2: #262b35;
+    --border: #3a3f4b;
+    --accent: #f5c518;
+    --accent-dark: #caa000;
+    --danger: #e5484d;
+    --success: #22c55e;
+    --info: #3b82f6;
+    --text: #f2f2f2;
+    --muted: #9aa0ab;
+    --stage: #e7e5ee;
+}
+
+*{
+    box-sizing: border-box;
+}
+
+.hidden{
+    display: none !important;
+}
+
+body{
+    margin: 0;
+    padding: 16px;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", Roboto, sans-serif;
+}
+
+#app{
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 1500px;
+    margin: 0 auto;
+}
+
+/* ---------- TOPBAR ---------- */
+
+#topbar{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 18px;
+}
+
+#topbar h1{
+    font-size: 20px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--accent);
+}
+
+#topbar-actions{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+#auth-area{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+#auth-area button{
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#auth-area button:hover{
+    border-color: var(--info);
+}
+
+.login-error{
+    color: var(--danger);
+    font-size: 12px;
+    margin-top: 8px;
+    min-height: 14px;
+}
+
+#date-picker-wrap{
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+    color: var(--muted);
+    gap: 3px;
+}
+
+#date-picker-wrap input{
+    background-color: var(--panel-bg-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 8px;
+    border-radius: 6px;
+}
+
+.topbar-btn{
+    background-color: var(--accent);
+    color: #14161a;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color 0.2s;
+}
+
+.topbar-btn:hover{
+    background-color: var(--accent-dark);
+}
+
+.topbar-btn.active{
+    background-color: var(--info);
+    color: white;
+}
+
+/* ---------- LAYOUT PRINCIPALE ---------- */
+
+#main-content{
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+#map-area{
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+/* ---------- MAPPA (viewport stile Maps) ---------- */
+
+#map-viewport{
+    position: relative;
+    width: 100%;
+    height: 70vh;
+    min-height: 420px;
+    background-color: var(--panel-bg);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+}
+
+#map-viewport.panning{
+    cursor: grabbing;
+}
+
+#map-world{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+}
+
+#palco{
+    position: absolute;
+    left: 0;
+    top: 0;
+    background-color: var(--stage);
+    color: #212121;
+    width: 700px;
+    height: 400px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    letter-spacing: 3px;
+}
+
+/* ---------- SEZIONI DI SEDIE ---------- */
+
+.section-box{
+    position: absolute;
+    transform-origin: center center;
+    touch-action: none;
+}
+
+.section-box.editing{
+    outline: 2px dashed var(--accent);
+    outline-offset: 4px;
+    border-radius: 6px;
+    cursor: move;
+}
+
+.section-label{
+    position: absolute;
+    top: -20px;
+    left: 0;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.seat-grid{
+    display: grid;
+}
+
+.seat-cell{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.seat-cell.empty-cell{
+    visibility: hidden;
+}
+
+.chair-btn{
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255,255,255,0.06);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+
+.chair-btn i{
+    font-size: 16px;
+}
+
+.chair-btn span{
+    font-size: 9px;
+    margin-top: 2px;
+}
+
+.chair-btn:hover{
+    scale: 1.08;
+    background-color: rgba(255,255,255,0.14);
+}
+
+.chair-btn.selected{
+    background-color: var(--accent) !important;
+    color: #14161a !important;
+}
+
+.chair-btn.occupied.paid{
+    background-color: var(--danger) !important;
+    color: white !important;
+}
+
+.chair-btn.occupied.free{
+    background-color: var(--info) !important;
+    color: white !important;
+}
+
+.chair-btn.locked{
+    cursor: default;
+    opacity: 0.85;
+}
+
+/* ---------- MANIGLIE EDITING (stile Canva) ---------- */
+
+.resize-handle{
+    position: absolute;
+    right: -9px;
+    bottom: -9px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: var(--accent);
+    border: 2px solid #14161a;
+    cursor: nwse-resize;
+    z-index: 3;
+}
+
+.rotate-handle{
+    position: absolute;
+    top: -34px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: var(--info);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: grab;
+    z-index: 3;
+    border: 2px solid #14161a;
+}
+
+/* ---------- CONTROLLI ZOOM ---------- */
+
+#map-controls{
+    position: absolute;
+    bottom: 14px;
+    left: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 5;
+}
+
+#map-controls button{
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background-color: var(--panel-bg-2);
+    color: white;
+    cursor: pointer;
+}
+
+#map-controls button:hover{
+    background-color: var(--info);
+}
+
+/* ---------- TOOLBAR EDITING ---------- */
+
+#edit-toolbar{
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--panel-bg-2);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 8px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    z-index: 6;
+    max-width: 92%;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+#edit-toolbar.hidden{
+    display: none;
+}
+
+.edit-toolbar-actions{
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.edit-toolbar-actions button{
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#save-layout-btn{
+    background-color: var(--success);
+    color: white;
+}
+
+#exit-edit-btn{
+    background-color: var(--danger);
+    color: white;
+}
+
+/* ---------- PANNELLO INFO ---------- */
+
+#info-panel{
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    width: 260px;
+    flex-shrink: 0;
+    color: var(--text);
+}
+
+#info-panel h2{
+    margin-top: 0;
+    font-size: 17px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+}
+
+.day-status{
+    font-size: 12px;
+    margin-bottom: 10px;
+    color: var(--muted);
+}
+
+.day-status.locked{
+    color: var(--danger);
+    font-weight: bold;
+}
+
+#seat-list{
+    max-height: 220px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+}
+
+.seat-row{
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px solid #3a3a3a;
+    font-size: 13px;
+}
+
+.empty-list{
+    color: #888;
+    font-style: italic;
+    font-size: 12px;
+}
+
+#total-price{
+    font-weight: bold;
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+
+#revenue-day{
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 12px;
+}
+
+.confirm-buttons{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+#confirm-paid-btn,
+#confirm-free-btn{
+    padding: 9px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+#confirm-paid-btn{
+    background-color: var(--success);
+    color: white;
+}
+
+#confirm-paid-btn:hover{
+    background-color: #1ea34e;
+}
+
+#confirm-free-btn{
+    background-color: var(--info);
+    color: white;
+}
+
+#confirm-free-btn:hover{
+    background-color: #2f6fd6;
+}
+
+#confirm-paid-btn:disabled,
+#confirm-free-btn:disabled{
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.ghost-btn{
+    width: 100%;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 7px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.ghost-btn:hover{
+    border-color: var(--info);
+    color: white;
+}
+
+#save-status{
+    font-size: 12px;
+    color: var(--muted);
+    min-height: 14px;
+}
+
+/* ---------- MODALI ---------- */
+
+#modal-overlay,
+#rename-modal-overlay{
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+#modal-overlay.hidden,
+#rename-modal-overlay.hidden{
+    display: none;
+}
+
+.modal-box{
+    background-color: var(--panel-bg-2);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    color: white;
+    width: 280px;
+    text-align: center;
+}
+
+.modal-box input{
+    width: 100%;
+    padding: 8px;
+    margin-top: 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background-color: var(--panel-bg);
+    color: white;
+    text-align: center;
+}
+
+.modal-actions{
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+    gap: 6px;
+}
+
+.modal-actions button{
+    flex: 1;
+    padding: 7px 8px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.btn-annulla{
+    background-color: #757575;
+    color: white;
+}
+
+.btn-conferma{
+    background-color: var(--danger);
+    color: white;
+}
+
+.btn-svuota{
+    background-color: #565c68;
+    color: white;
+}
+
+/* ---------- RESPONSIVE ---------- */
+
+@media (max-width: 900px){
+    #main-content{
+        flex-direction: column;
+    }
+
+    #info-panel{
+        width: 100%;
+    }
+
+    #map-viewport{
+        height: 55vh;
+        min-height: 340px;
+    }
+
+    #edit-toolbar{
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px){
+    body{
+        padding: 8px;
+    }
+
+    #topbar h1{
+        font-size: 16px;
+    }
+
+    #topbar-actions{
+        width: 100%;
+        justify-content: space-between;
+    }
+}
