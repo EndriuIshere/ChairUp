@@ -9,7 +9,11 @@
 const CELL = 44;      // dimensione di ogni sedia in px
 const GAP = 6;         // spazio tra le sedie
 const MIN_CELLS = 1;
-const MAX_CELLS = 20;
+// Nessun limite "basso" imposto dall'app: le sezioni possono crescere
+// quanto serve per ricoprire tutta l'area di sedie. Teniamo comunque un
+// tetto molto alto solo come rete di sicurezza contro drag anomali
+// (es. puntatore trascinato fuori schermo), non come limite d'uso reale.
+const MAX_CELLS = 100;
 
 let supabaseClient = null;
 
@@ -228,8 +232,6 @@ function onSeatClick(sectionId, r, c, code){
         openFreeModal(code);
         return;
     }
-
-    if(!requireAuth()) return;
 
     if(selected.has(code)) selected.delete(code);
     else selected.add(code);
@@ -590,31 +592,15 @@ async function showOverallRevenue(){
 
 function updateAuthUI(){
     const area = document.getElementById("auth-area");
-    const editBtn = document.getElementById("edit-toggle-btn");
-    const confirmButtons = document.querySelector(".confirm-buttons");
-
     if(currentUser){
         area.innerHTML = `<span>${currentUser.email}</span><button id="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Esci account</button>`;
         document.getElementById("logout-btn").addEventListener("click", async () => {
             await supabaseClient.auth.signOut();
         });
-        editBtn.classList.remove("hidden");
-        confirmButtons.classList.remove("hidden");
     } else {
         area.innerHTML = `<button id="login-open-btn"><i class="fa-solid fa-right-to-bracket"></i> Accedi staff</button>`;
         document.getElementById("login-open-btn").addEventListener("click", openLoginModal);
-        editBtn.classList.add("hidden");
-        confirmButtons.classList.add("hidden");
-
-        // se l'utente viene sloggato mentre è in Editing Mode, si esce forzatamente
-        if(editMode){
-            editMode = false;
-            document.getElementById("edit-toolbar").classList.add("hidden");
-        }
     }
-
-    renderMap();
-    renderInfoPanel();
 }
 
 function openLoginModal(){
