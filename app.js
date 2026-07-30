@@ -267,6 +267,17 @@ function buildSectionEl(section){
             startSectionRotate(e, section.id);
         });
         box.appendChild(rotateHandle);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "delete-section-btn";
+        deleteBtn.title = "Elimina sezione";
+        deleteBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        deleteBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
+        deleteBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            deleteSection(section.id);
+        });
+        box.appendChild(deleteBtn);
     }
 
     return box;
@@ -531,6 +542,21 @@ function addSection(){
     };
 
     layout.push(newSection);
+    renderMap();
+    renderInfoPanel();
+}
+
+/* ---------- EDITING MODE: ELIMINAZIONE SEZIONE ---------- */
+
+function deleteSection(sectionId){
+    if(!requireAuth()) return;
+    const sec = getSection(sectionId);
+    if(!sec) return;
+
+    const ok = confirm(`Eliminare la sezione "${sec.label || sec.id}"? Ricordati di premere Salva per rendere definitiva la modifica.`);
+    if(!ok) return;
+
+    layout = layout.filter(s => s.id !== sectionId);
     renderMap();
     renderInfoPanel();
 }

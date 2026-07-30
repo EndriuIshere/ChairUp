@@ -150,6 +150,17 @@ body{
 
 /* ---------- MAPPA (viewport stile Maps) ---------- */
 
+#map-area, #map-area *{
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#map-area *:focus,
+#map-area *:focus-visible{
+    outline: none;
+}
+
 #map-viewport{
     position: relative;
     width: 100%;
@@ -301,6 +312,29 @@ body{
     z-index: 3;
 }
 
+.delete-section-btn{
+    position: absolute;
+    left: -9px;
+    top: -9px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--danger);
+    color: white;
+    border: 2px solid #14161a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    z-index: 4;
+    padding: 0;
+}
+
+.delete-section-btn:hover{
+    background-color: #c0393d;
+}
+
 .rotate-handle{
     position: absolute;
     top: -34px;
@@ -368,6 +402,53 @@ body{
 
 #edit-toolbar.hidden{
     display: none;
+}
+
+.edit-toolbar-title{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+    color: var(--text);
+    font-size: 13px;
+}
+
+.edit-info-icon{
+    position: relative;
+    color: var(--info);
+    cursor: help;
+    font-size: 13px;
+}
+
+.edit-info-icon[data-tooltip]:hover::after{
+    content: attr(data-tooltip);
+    position: absolute;
+    top: 130%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 260px;
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: normal;
+    line-height: 1.4;
+    padding: 10px 12px;
+    border-radius: 8px;
+    z-index: 30;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+    text-align: left;
+}
+
+.edit-info-icon[data-tooltip]:hover::before{
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-bottom-color: var(--panel-bg);
+    z-index: 30;
 }
 
 .edit-toolbar-actions{
@@ -528,7 +609,8 @@ body{
 /* ---------- MODALI ---------- */
 
 #modal-overlay,
-#rename-modal-overlay{
+#rename-modal-overlay,
+#login-modal-overlay{
     position: fixed;
     inset: 0;
     background-color: rgba(0,0,0,0.6);
@@ -539,7 +621,8 @@ body{
 }
 
 #modal-overlay.hidden,
-#rename-modal-overlay.hidden{
+#rename-modal-overlay.hidden,
+#login-modal-overlay.hidden{
     display: none;
 }
 
